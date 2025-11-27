@@ -16,8 +16,7 @@ use move_core_types::{
 };
 use move_trace_format::{
     format::{
-        DataLoad, Effect as EF, Location, MoveTraceBuilder, Read, RefType, TraceIndex, TraceValue,
-        TypeTagWithRefs, Write,
+        DataLoad, Effect as EF, ExtraInstructionInformation, Location, MoveTraceBuilder, Read, RefType, TraceIndex, TraceValue, TypeTagWithRefs, Write
     },
     value::SerializableMoveValue,
 };
@@ -946,15 +945,52 @@ impl VMTracer<'_, '_> {
             | B::LdConst(_) => {
                 self.register_pre_effects(vec![]);
             }
+            B::MutBorrowFieldGeneric(_)
+            | B::ImmBorrowFieldGeneric(_) => {
+                self.register_pre_effects(popn(1)?);
+                let value_ty = self.type_stack.last()?;
+                let MoveTypeLayout::Struct(slayout) = &value_ty.layout else {
+                    panic!("Expected struct, got {:?}", value_ty.layout)
+                };
+                type_parameters = slayout.type_.type_params.clone()
+            }
+            B::Unpack(sidx) => {
+                self.register_pre_effects(popn(1)?);
+                let resolver = frame.function.get_resolver(self.link_context(), loader);
+                let field_count = resolver.field_count(*sidx) as usize;
+                extra = Some(ExtraInstructionInformation::Unpack(field_count));
+            }
+            B::UnpackVariant(vidx) => {
+                self.register_pre_effects(popn(1)?);
+                let resolver = frame.function.get_resolver(self.link_context(), loader);
+                let (field_count, _variant_tag) = resolver.variant_field_count_and_tag(*vidx);
+                extra = Some(ExtraInstructionInformation::UnpackVariant(field_count as _));
+            }
+            B::UnpackGeneric(sidx) => {
+                self.register_pre_effects(popn(1)?);
+                let resolver = frame.function.get_resolver(self.link_context(), loader);
+                let field_count = resolver.field_instantiation_count(*sidx) as usize;
+                let struct_type = resolver
+                    .instantiate_struct_type(*sidx, &frame.ty_args)
+                    .ok()?;
+                let TypeTag::Struct(s_type) = loader.type_to_type_tag(&struct_type).ok()? else {
+                    panic!("Expected struct, got {:#?}", struct_type);
+                };
+                type_parameters = s_type.type_params.clone();
+                extra = Some(ExtraInstructionInformation::UnpackGeneric(field_count));
+            }
+            B::UnpackVariantGeneric(vidx) => {
+                self.register_pre_effects(popn(1)?);
+                let resolver = frame.function.get_resolver(self.link_context(), loader);
+                let (field_count, _variant_tag) =
+                    resolver.variant_instantiantiation_field_count_and_tag(*vidx);
+                extra = Some(ExtraInstructionInformation::UnpackVariantGeneric(field_count as _));
+            }
             B::MutBorrowField(_)
             | B::ImmBorrowField(_)
-            | B::MutBorrowFieldGeneric(_)
-            | B::ImmBorrowFieldGeneric(_)
             | B::FreezeRef
             | B::Not
             | B::Abort
-            | B::Unpack(_)
-            | B::UnpackGeneric(_)
             | B::CastU8
             | B::CastU16
             | B::CastU32
@@ -971,9 +1007,7 @@ impl VMTracer<'_, '_> {
             | B::UnpackVariantImmRef(_)
             | B::UnpackVariantMutRef(_)
             | B::UnpackVariantGenericImmRef(_)
-            | B::UnpackVariantGenericMutRef(_)
-            | B::UnpackVariant(_)
-            | B::UnpackVariantGeneric(_) => {
+            | B::UnpackVariantGenericMutRef(_)=> {
                 self.register_pre_effects(popn(1)?);
             }
             B::Add
@@ -1037,22 +1071,33 @@ impl VMTracer<'_, '_> {
                 let resolver = frame.function.get_resolver(self.link_context(), loader);
                 let field_count = resolver.field_count(*sidx) as usize;
                 self.register_pre_effects(popn(field_count)?);
+                extra = Some(ExtraInstructionInformation::Pack(field_count));
             }
             B::PackGeneric(sidx) => {
                 let resolver = frame.function.get_resolver(self.link_context(), loader);
                 let field_count = resolver.field_instantiation_count(*sidx) as usize;
                 self.register_pre_effects(popn(field_count)?);
+                let struct_type = resolver
+                    .instantiate_struct_type(*sidx, &frame.ty_args)
+                    .ok()?;
+                let TypeTag::Struct(s_type) = loader.type_to_type_tag(&struct_type).ok()? else {
+                    panic!("Expected struct, got {:#?}", struct_type);
+                };
+                type_parameters = s_type.type_params.clone();
+                extra = Some(ExtraInstructionInformation::PackGeneric(field_count));
             }
             B::PackVariant(vidx) => {
                 let resolver = frame.function.get_resolver(self.link_context(), loader);
                 let (field_count, _variant_tag) = resolver.variant_field_count_and_tag(*vidx);
                 self.register_pre_effects(popn(field_count as usize)?);
+                extra = Some(ExtraInstructionInformation::PackVariant(field_count as _));
             }
             B::PackVariantGeneric(vidx) => {
                 let resolver = frame.function.get_resolver(self.link_context(), loader);
                 let (field_count, _variant_tag) =
                     resolver.variant_instantiantiation_field_count_and_tag(*vidx);
                 self.register_pre_effects(popn(field_count as usize)?);
+                extra = Some(ExtraInstructionInformation::PackVariantGeneric(field_count as _));
             }
             B::ReadRef => {
                 let ref_value = self.resolve_stack_value(Some(frame), interpreter, 0)?;
