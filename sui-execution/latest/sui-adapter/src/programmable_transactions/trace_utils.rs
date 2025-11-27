@@ -36,7 +36,7 @@ use sui_verifier::INIT_FN_NAME;
 /// its body is (and must be) enclosed in an if statement checking if tracing is enabled.
 pub fn trace_move_call_start(trace_builder_opt: &mut Option<MoveTraceBuilder>) {
     if let Some(trace_builder) = trace_builder_opt {
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::MoveCallStart
         ))));
     }
@@ -46,7 +46,7 @@ pub fn trace_move_call_start(trace_builder_opt: &mut Option<MoveTraceBuilder>) {
 /// its body is (and must be) enclosed in an if statement checking if tracing is enabled.
 pub fn trace_move_call_end(trace_builder_opt: &mut Option<MoveTraceBuilder>) {
     if let Some(trace_builder) = trace_builder_opt {
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::MoveCallEnd
         ))));
     }
@@ -68,7 +68,7 @@ pub fn trace_transfer(
                 info: obj_info,
             });
         }
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::ExternalEvent(ExternalEvent {
                 description: "TransferObjects: obj0...objN => ()".to_string(),
                 name: "Transfer".to_string(),
@@ -142,7 +142,7 @@ pub fn trace_ptb_summary<Mode: ExecutionMode>(
             .into_iter()
             .flatten()
             .collect();
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::Summary(SummaryEvent {
                 name: "PTBSummary".to_string(),
                 events,
@@ -188,7 +188,7 @@ pub fn trace_split_coins(
             *input_coin.id.object_id(),
             input_coin.value(),
         )?;
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::ExternalEvent(ExternalEvent {
                 description: "SplitCoins: input => result".to_string(),
                 name: "SplitCoins".to_string(),
@@ -254,7 +254,7 @@ pub fn trace_merge_coins(
             name: "merge_result".to_string(),
             info: merge_result,
         });
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::ExternalEvent(ExternalEvent {
                 description: "MergeCoins: merge_target, coin0...coinN => mergeresult".to_string(),
                 name: "MergeCoins".to_string(),
@@ -275,7 +275,7 @@ pub fn trace_make_move_vec(
 ) -> Result<(), ExecutionError> {
     if let Some(trace_builder) = trace_builder_opt {
         let type_tag_with_refs = trace_type_to_type_tag_with_refs(context, type_)?;
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::ExternalEvent(ExternalEvent {
                 description: "MakeMoveVec: vector".to_string(),
                 name: "MakeMoveVec".to_string(),
@@ -299,7 +299,7 @@ pub fn trace_publish_event(
     trace_builder_opt: &mut Option<MoveTraceBuilder>,
 ) -> Result<(), ExecutionError> {
     if let Some(trace_builder) = trace_builder_opt {
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::ExternalEvent(ExternalEvent {
                 description: "Publish: ()".to_string(),
                 name: "Publish".to_string(),
@@ -316,7 +316,7 @@ pub fn trace_upgrade_event(
     trace_builder_opt: &mut Option<MoveTraceBuilder>,
 ) -> Result<(), ExecutionError> {
     if let Some(trace_builder) = trace_builder_opt {
-        trace_builder.push_event(TraceEvent::External(Box::new(serde_json::json!(
+        trace_builder.push_event(&TraceEvent::External(Box::new(serde_json::json!(
             PTBEvent::ExternalEvent(ExternalEvent {
                 description: "Upgrade: ()".to_string(),
                 name: "Upgrade".to_string(),
@@ -331,7 +331,7 @@ pub fn trace_upgrade_event(
 /// its body is (and must be) enclosed in an if statement checking if tracing is enabled.
 pub fn trace_execution_error(trace_builder_opt: &mut Option<MoveTraceBuilder>, msg: String) {
     if let Some(trace_builder) = trace_builder_opt {
-        trace_builder.push_event(TraceEvent::Effect(Box::new(Effect::ExecutionError(msg))));
+        trace_builder.push_event(&TraceEvent::Effect(Box::new(Effect::ExecutionError(msg))));
     }
 }
 

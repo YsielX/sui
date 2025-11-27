@@ -904,7 +904,7 @@ impl VMTracer<'_, '_> {
         frame: &Frame,
         interpreter: &Interpreter,
         loader: &Loader,
-        _remaining_gas: u64,
+        remaining_gas: u64,
     ) -> Option<()> {
         use move_binary_format::file_format::Bytecode as B;
 
@@ -928,7 +928,10 @@ impl VMTracer<'_, '_> {
             pc,
         );
 
-        match &frame.function.code()[pc as usize] {
+        let mut extra = None;
+        let mut type_parameters = vec![]; // TODO: Port original type parameters logic
+        let instruction = &frame.function.code()[pc as usize];
+        match instruction {
             B::Nop
             | B::Branch(_)
             | B::Ret
@@ -1077,6 +1080,7 @@ impl VMTracer<'_, '_> {
             | B::ImmBorrowGlobalDeprecated(_)
             | B::ImmBorrowGlobalGenericDeprecated(_) => unreachable!(),
         }
+        self.trace.before_instruction(instruction, type_parameters, remaining_gas, pc, &interpreter.operand_stack, extra);
         Some(())
     }
 

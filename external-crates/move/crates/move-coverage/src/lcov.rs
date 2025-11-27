@@ -104,86 +104,86 @@ impl PackageRecordKeeper {
 
     // Build up the functions hit, executed lines, and branches hit.
     pub fn calculate_coverage<R: Read>(&mut self, trace: MoveTraceReader<'_, R>) {
-        let mut current_fn_index = vec![];
-        let mut current_record_id = vec![];
-        let mut coming_from = None;
+        // let mut current_fn_index = vec![];
+        // let mut current_record_id = vec![];
+        // let mut coming_from = None;
 
         for event in trace {
-            match event.unwrap() {
-                TraceEvent::OpenFrame { frame, .. } => {
-                    let module_id = frame.module.clone();
-                    let record = self.file_record_keepers.get_mut(&module_id).unwrap();
-                    let name = frame.function_name.clone();
-                    record
-                        .functions_hit
-                        .entry(name.clone())
-                        .and_modify(|e| *e += 1)
-                        .or_insert(1);
-                    let Ok(smap) =
-                        record
-                            .unit
-                            .source_map
-                            .get_function_source_map(FunctionDefinitionIndex(
-                                frame.binary_member_index,
-                            ))
-                    else {
-                        continue;
-                    };
-                    let line = self
-                        .file_mapping
-                        .start_position(&smap.definition_location)
-                        .line_offset()
-                        + 1;
-                    record
-                        .line_entries
-                        .entry(line)
-                        .and_modify(|e| *e += 1)
-                        .or_insert(1);
-                    current_fn_index.push(frame.binary_member_index);
-                    current_record_id.push(module_id);
-                    coming_from = None;
-                }
-                TraceEvent::Instruction { pc, .. } => {
-                    let module_id = current_record_id.last().unwrap();
-                    let current_fn_index = current_fn_index.last().unwrap();
-                    let record = self.file_record_keepers.get_mut(module_id).unwrap();
-                    let Ok(loc) = record
-                        .unit
-                        .source_map
-                        .get_code_location(FunctionDefinitionIndex(*current_fn_index), pc)
-                    else {
-                        continue;
-                    };
-                    let line = self.file_mapping.start_position(&loc).line_offset() + 1;
-                    debug_assert!(record.instrumented_lines.contains(&line));
+            // match event.unwrap() {
+            //     TraceEvent::OpenFrame { frame, .. } => {
+            //         let module_id = frame.module.clone();
+            //         let record = self.file_record_keepers.get_mut(&module_id).unwrap();
+            //         let name = frame.function_name.clone();
+            //         record
+            //             .functions_hit
+            //             .entry(name.clone())
+            //             .and_modify(|e| *e += 1)
+            //             .or_insert(1);
+            //         let Ok(smap) =
+            //             record
+            //                 .unit
+            //                 .source_map
+            //                 .get_function_source_map(FunctionDefinitionIndex(
+            //                     frame.binary_member_index,
+            //                 ))
+            //         else {
+            //             continue;
+            //         };
+            //         let line = self
+            //             .file_mapping
+            //             .start_position(&smap.definition_location)
+            //             .line_offset()
+            //             + 1;
+            //         record
+            //             .line_entries
+            //             .entry(line)
+            //             .and_modify(|e| *e += 1)
+            //             .or_insert(1);
+            //         current_fn_index.push(frame.binary_member_index);
+            //         current_record_id.push(module_id);
+            //         coming_from = None;
+            //     }
+            //     TraceEvent::Instruction { pc, .. } => {
+            //         let module_id = current_record_id.last().unwrap();
+            //         let current_fn_index = current_fn_index.last().unwrap();
+            //         let record = self.file_record_keepers.get_mut(module_id).unwrap();
+            //         let Ok(loc) = record
+            //             .unit
+            //             .source_map
+            //             .get_code_location(FunctionDefinitionIndex(*current_fn_index), pc)
+            //         else {
+            //             continue;
+            //         };
+            //         let line = self.file_mapping.start_position(&loc).line_offset() + 1;
+            //         debug_assert!(record.instrumented_lines.contains(&line));
 
-                    record
-                        .line_entries
-                        .entry(line)
-                        .and_modify(|e| *e += 1)
-                        .or_insert(1);
+            //         record
+            //             .line_entries
+            //             .entry(line)
+            //             .and_modify(|e| *e += 1)
+            //             .or_insert(1);
 
-                    if let Some(from) = coming_from
-                        && let Some(info) = record.branches.get_mut(&(*current_fn_index, from))
-                    {
-                        info.hit_branch(pc)
-                    }
+            //         if let Some(from) = coming_from
+            //             && let Some(info) = record.branches.get_mut(&(*current_fn_index, from))
+            //         {
+            //             info.hit_branch(pc)
+            //         }
 
-                    coming_from = None;
+            //         coming_from = None;
 
-                    let branch_info_opt = record.branches.get_mut(&(*current_fn_index, pc));
+            //         let branch_info_opt = record.branches.get_mut(&(*current_fn_index, pc));
 
-                    if branch_info_opt.is_some() {
-                        coming_from = Some(pc);
-                    }
-                }
-                TraceEvent::CloseFrame { .. } => {
-                    current_fn_index.pop();
-                    current_record_id.pop();
-                    coming_from = None;
-                }
-                TraceEvent::Effect(_) | TraceEvent::External(_) => (),
-            }
+            //         if branch_info_opt.is_some() {
+            //             coming_from = Some(pc);
+            //         }
+            //     }
+            //     TraceEvent::CloseFrame { .. } => {
+            //         current_fn_index.pop();
+            //         current_record_id.pop();
+            //         coming_from = None;
+            //     }
+            //     TraceEvent::Effect(_) | TraceEvent::External(_) => (),
+            // }
         }
     }
 }

@@ -159,6 +159,18 @@ pub struct DataLoad {
     pub snapshot: SerializableMoveValue,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ExtraInstructionInformation {
+    Pack(usize),
+    PackGeneric(usize),
+    PackVariant(usize),
+    PackVariantGeneric(usize),
+    Unpack(usize),
+    UnpackVariant(usize),
+    UnpackGeneric(usize),
+    UnpackVariantGeneric(usize)
+}
+
 /// A TraceEvent is a single event in the Move VM, external events can also be interleaved in the
 /// trace. MoveVM events, are well structured, and can be a frame event or an instruction event.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -178,6 +190,13 @@ pub enum TraceEvent {
         gas_left: u64,
         instruction: Bytecode,
     },
+    BeforeInstruction {
+        type_parameters: Vec<TypeTag>,
+        pc: u16,
+        gas_left: u64,
+        instruction: Bytecode,
+        extra: Option<ExtraInstructionInformation>
+    },
     Effect(Box<Effect>),
     External(Box<serde_json::Value>),
 }
@@ -189,8 +208,8 @@ pub struct TraceVersionData {
 
 pub struct BufferedEventStream {
     pub event_count: TraceIndex,
-    handle: std::thread::JoinHandle<Vec<u8>>,
-    sender: std::sync::mpsc::SyncSender<TraceEvent>,
+    // handle: std::thread::JoinHandle<Vec<u8>>,
+    // sender: std::sync::mpsc::SyncSender<TraceEvent>,
 }
 
 pub struct MoveTrace {
@@ -234,49 +253,50 @@ impl TraceValue {
 
 impl BufferedEventStream {
     pub fn new() -> Self {
-        let (tx, rx): (_, Receiver<TraceEvent>) =
-            std::sync::mpsc::sync_channel(CHANNEL_BUFFER_SIZE);
-        let handle = std::thread::spawn(move || {
-            use std::io::Write;
-            let mut events = zstd::stream::Encoder::new(Vec::new(), COMPRESSION_LEVEL).unwrap();
-            serde_json::to_writer(
-                &mut events,
-                &TraceVersionData {
-                    version: TRACE_VERSION,
-                },
-            )
-            .unwrap();
-            writeln!(&mut events).unwrap();
-            let mut buf = Vec::new();
-            for event in rx {
-                serde_json::to_writer(&mut buf, &event).unwrap();
-                writeln!(&mut buf).unwrap();
+        // let (tx, rx): (_, Receiver<TraceEvent>) =
+        //     std::sync::mpsc::sync_channel(CHANNEL_BUFFER_SIZE);
+        // let handle = std::thread::spawn(move || {
+        //     use std::io::Write;
+        //     let mut events = zstd::stream::Encoder::new(Vec::new(), COMPRESSION_LEVEL).unwrap();
+        //     serde_json::to_writer(
+        //         &mut events,
+        //         &TraceVersionData {
+        //             version: TRACE_VERSION,
+        //         },
+        //     )
+        //     .unwrap();
+        //     writeln!(&mut events).unwrap();
+        //     let mut buf = Vec::new();
+        //     for event in rx {
+        //         serde_json::to_writer(&mut buf, &event).unwrap();
+        //         writeln!(&mut buf).unwrap();
 
-                if buf.len() > COMPRESSION_CHUNK_SIZE {
-                    events.write_all(&std::mem::take(&mut buf)).unwrap();
-                }
-            }
+        //         if buf.len() > COMPRESSION_CHUNK_SIZE {
+        //             events.write_all(&std::mem::take(&mut buf)).unwrap();
+        //         }
+        //     }
 
-            events.write_all(buf.as_slice()).unwrap();
-            events.finish().unwrap()
-        });
+        //     events.write_all(buf.as_slice()).unwrap();
+        //     events.finish().unwrap()
+        // });
 
         Self {
             event_count: 0,
-            handle,
-            sender: tx,
+            // handle,
+            // sender: tx,
         }
     }
 
-    pub fn push(&mut self, event: TraceEvent) {
-        self.sender.send(event).unwrap();
+    pub fn push(&mut self, event: &TraceEvent) {
+        // self.sender.send(event).unwrap();
         self.event_count += 1;
     }
 
     pub fn finish(self) -> Vec<u8> {
-        // close channel
-        drop(self.sender);
-        self.handle.join().unwrap()
+        // // close channel
+        // drop(self.sender);
+        // self.handle.join().unwrap()
+        vec![]
     }
 }
 
@@ -288,7 +308,7 @@ impl MoveTrace {
         }
     }
 
-    pub fn push_event(&mut self, event: TraceEvent) {
+    pub fn push_event(&mut self, event: &TraceEvent) {
         self.buf.push(event);
     }
 
@@ -358,12 +378,33 @@ impl<'a> MoveTraceBuilder<'a> {
             locals_types,
             is_native,
         });
-        self.push_event_runtime(TraceEvent::OpenFrame { frame, gas_left }, Some(stack));
+        self.push_event_runtime(&TraceEvent::OpenFrame { frame, gas_left }, Some(stack));
+    }
+
+    /// Record an `BeforeInstruction` event before the beginning of the instruction.
+    pub fn before_instruction(
+        &mut self,
+        instruction: &Bytecode,
+        type_parameters: Vec<TypeTag>,
+        gas_left: u64,
+        pc: u16,
+        stack: &Stack,
+        extra: Option<ExtraInstructionInformation>
+    ) {
+        self.push_event_runtime(&TraceEvent::BeforeInstruction {
+            type_parameters,
+            pc,
+            gas_left,
+            instruction: instruction.clone(),
+            extra
+        },
+            Some(stack)
+        );
     }
 
     /// Record a `CloseFrame` event in the trace.
     pub fn close_frame(&mut self, frame_id: TraceIndex, return_: Vec<TraceValue>, gas_left: u64, stack: &Stack) {
-        self.push_event_runtime(TraceEvent::CloseFrame {
+        self.push_event_runtime(&TraceEvent::CloseFrame {
             frame_id,
             return_,
             gas_left,
@@ -380,32 +421,33 @@ impl<'a> MoveTraceBuilder<'a> {
         pc: u16,
         stack: &Stack
     ) {
-        self.push_event_runtime(TraceEvent::Instruction {
+        self.push_event_runtime(&TraceEvent::Instruction {
             type_parameters,
             pc,
             gas_left,
             instruction: instruction.clone(),
         }, Some(stack));
         for effect in effects {
-            self.push_event_runtime(TraceEvent::Effect(Box::new(effect)), Some(stack));
+            self.push_event_runtime(&TraceEvent::Effect(Box::new(effect)), Some(stack));
         }
     }
 
     /// Push an `Effect` event to the trace.
     pub fn effect(&mut self, effect: Effect, stack: &Stack) {
-        self.push_event_runtime(TraceEvent::Effect(Box::new(effect)), Some(stack));
+        self.push_event_runtime(&TraceEvent::Effect(Box::new(effect)), Some(stack));
     }
 
     // All events pushed to the trace are first pushed, and then the tracer is notified of the
     // event.
-    pub fn push_event(&mut self, event: TraceEvent) {
+    pub fn push_event(&mut self, event: &TraceEvent) {
         self.push_event_runtime(event, None);
     }
 
     /// Push an `Event` with `Stack` during runtime
-    pub fn push_event_runtime(&mut self, event: TraceEvent, stack: Option<&Stack>) {
-        self.trace.push_event(event.clone());
-        self.tracer.notify(&event, Writer(&mut self.trace), stack);
+    pub fn push_event_runtime(&mut self, event: &TraceEvent, stack: Option<&Stack>) {
+        self.trace.push_event(event);
+        // TODO: Configurable Filters
+        self.tracer.notify(event, Writer(&mut self.trace), stack);
     }
 }
 
