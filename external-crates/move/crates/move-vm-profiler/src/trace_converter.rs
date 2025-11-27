@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use move_trace_format::format::{Frame, MoveTraceReader, TraceEvent};
+// use move_trace_format::format::{Frame, MoveTraceReader, TraceEvent};
 use serde::Serialize;
 use std::{
     collections::BTreeMap,
@@ -64,12 +64,12 @@ pub struct GasProfiler {
     shared: Shared,
     profiles: Vec<Profile>,
 
-    #[serde(skip)]
-    pub current_gas: Option<u64>,
-    #[serde(skip)]
-    pub config: ProfilerConfig,
-    #[serde(skip)]
-    pub frames: BTreeMap<usize, Frame>,
+    // #[serde(skip)]
+    // pub current_gas: Option<u64>,
+    // #[serde(skip)]
+    // pub config: ProfilerConfig,
+    // #[serde(skip)]
+    // pub frames: BTreeMap<usize, Frame>,
 }
 
 impl GasProfiler {
@@ -95,9 +95,9 @@ impl GasProfiler {
                 end_value: 0,
                 events: vec![],
             }],
-            current_gas: None,
-            config: config.clone(),
-            frames: BTreeMap::new(),
+            // current_gas: None,
+            // config: config.clone(),
+            // frames: BTreeMap::new(),
         }
     }
 
@@ -110,20 +110,22 @@ impl GasProfiler {
     }
 
     fn frame_name(&self, name: &str) -> String {
-        if self.config.use_long_function_name {
-            name.to_string()
-        } else {
-            Self::short_name(name)
-        }
+        // if self.config.use_long_function_name {
+        //     name.to_string()
+        // } else {
+        //     Self::short_name(name)
+        // }
+        String::new()
     }
 
     fn get_gas_span(&mut self, current_gas: u64) -> u64 {
-        if let Some(curr_gas_state) = &mut self.current_gas {
-            curr_gas_state.saturating_sub(current_gas)
-        } else {
-            self.current_gas = Some(current_gas);
-            0
-        }
+        // if let Some(curr_gas_state) = &mut self.current_gas {
+        //     curr_gas_state.saturating_sub(current_gas)
+        // } else {
+        //     self.current_gas = Some(current_gas);
+        //     0
+        // }
+        0
     }
 
     fn add_frame(
@@ -171,46 +173,46 @@ impl GasProfiler {
         self.profiles[0].end_value = at;
     }
 
-    pub fn generate_from_trace<R: std::io::Read>(&mut self, trace: MoveTraceReader<R>) {
-        for event in trace {
-            let event = event.expect("Failed to read trace event");
-            match event {
-                TraceEvent::Instruction { .. }
-                | TraceEvent::Effect(..)
-                | TraceEvent::External(..) => (),
-                TraceEvent::OpenFrame { frame, gas_left } => {
-                    self.open_frame(
-                        format!(
-                            "{}::{}::{}",
-                            frame.version_id.to_canonical_display(true),
-                            frame.module.name(),
-                            frame.function_name
-                        ),
-                        "".to_string(),
-                        gas_left,
-                    );
-                    self.frames.insert(frame.frame_id, *frame);
-                }
-                TraceEvent::CloseFrame {
-                    frame_id,
-                    return_: _,
-                    gas_left,
-                } => {
-                    let frame = self.frames.remove(&frame_id).expect("Frame not found");
-                    self.close_frame(
-                        format!(
-                            "{}::{}::{}",
-                            frame.version_id.to_canonical_display(true),
-                            frame.module.name(),
-                            frame.function_name
-                        ),
-                        "".to_string(),
-                        gas_left,
-                    );
-                }
-            }
-        }
-    }
+    // pub fn generate_from_trace<R: std::io::Read>(&mut self, trace: MoveTraceReader<R>) {
+    //     for event in trace {
+    //         let event = event.expect("Failed to read trace event");
+    //         match event {
+    //             TraceEvent::Instruction { .. }
+    //             | TraceEvent::Effect(..)
+    //             | TraceEvent::External(..) => (),
+    //             TraceEvent::OpenFrame { frame, gas_left } => {
+    //                 self.open_frame(
+    //                     format!(
+    //                         "{}::{}::{}",
+    //                         frame.version_id.to_canonical_display(true),
+    //                         frame.module.name(),
+    //                         frame.function_name
+    //                     ),
+    //                     "".to_string(),
+    //                     gas_left,
+    //                 );
+    //                 self.frames.insert(frame.frame_id, *frame);
+    //             }
+    //             TraceEvent::CloseFrame {
+    //                 frame_id,
+    //                 return_: _,
+    //                 gas_left,
+    //             } => {
+    //                 let frame = self.frames.remove(&frame_id).expect("Frame not found");
+    //                 self.close_frame(
+    //                     format!(
+    //                         "{}::{}::{}",
+    //                         frame.version_id.to_canonical_display(true),
+    //                         frame.module.name(),
+    //                         frame.function_name
+    //                     ),
+    //                     "".to_string(),
+    //                     gas_left,
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
 
     fn filename_trim_all_extensions(path: &Path) -> Option<String> {
         path.file_name().and_then(|name| name.to_str()).map(|s| {
@@ -222,24 +224,24 @@ impl GasProfiler {
     }
 
     pub fn save_profile(&self) {
-        let name = Self::filename_trim_all_extensions(Path::new(&self.name))
-            .unwrap_or_else(|| self.name.clone());
-        let mut p = self
-            .config
-            .output_dir
-            .clone()
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
-        p.push(format!("gas_profile_{}.json", name));
-        if let Some(parent) = p.parent() {
-            std::fs::create_dir_all(parent).expect("Unable to create parent directory");
-        }
+        // let name = Self::filename_trim_all_extensions(Path::new(&self.name))
+        //     .unwrap_or_else(|| self.name.clone());
+        // let mut p = self
+        //     .config
+        //     .output_dir
+        //     .clone()
+        //     .unwrap_or_else(|| std::path::PathBuf::from("."));
+        // p.push(format!("gas_profile_{}.json", name));
+        // if let Some(parent) = p.parent() {
+        //     std::fs::create_dir_all(parent).expect("Unable to create parent directory");
+        // }
 
-        println!("Saving gas profile to: {}", p.display());
-        let mut file = File::create(&p).expect("Unable to create file");
+        // println!("Saving gas profile to: {}", p.display());
+        // let mut file = File::create(&p).expect("Unable to create file");
 
-        let json = serde_json::to_string_pretty(&self).expect("Unable to serialize profile");
-        file.write_all(json.as_bytes())
-            .expect("Unable to write to file");
-        tracing::info!("Gas profile written to file: {}", p.display());
+        // let json = serde_json::to_string_pretty(&self).expect("Unable to serialize profile");
+        // file.write_all(json.as_bytes())
+        //     .expect("Unable to write to file");
+        // tracing::info!("Gas profile written to file: {}", p.display());
     }
 }

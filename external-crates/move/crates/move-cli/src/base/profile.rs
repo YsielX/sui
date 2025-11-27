@@ -32,16 +32,16 @@ impl Profile {
     pub fn execute(&self) -> anyhow::Result<()> {
         let fh = std::fs::File::open(&self.input)?;
         let reader = MoveTraceReader::new(fh)?;
-        let mut profiler = GasProfiler::init(
-            ProfilerConfig {
-                output_dir: self.output.clone(),
-                use_long_function_name: self.long_function_name,
-            },
-            self.input.to_string_lossy().to_string(),
-        );
+        // let mut profiler = GasProfiler::init(
+        //     ProfilerConfig {
+        //         output_dir: self.output.clone(),
+        //         use_long_function_name: self.long_function_name,
+        //     },
+        //     self.input.to_string_lossy().to_string(),
+        // );
 
-        profiler.generate_from_trace(reader);
-        profiler.save_profile();
+        // profiler.generate_from_trace(reader);
+        // profiler.save_profile();
         Ok(())
     }
 }

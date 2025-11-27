@@ -38,15 +38,15 @@ impl AnalyzeTraceCommand {
             AnalyzeTraceCommand::GasProfile {
                 use_long_function_name,
             } => {
-                let mut profiler = GasProfiler::init(
-                    ProfilerConfig {
-                        output_dir,
-                        use_long_function_name,
-                    },
-                    path.to_string_lossy().to_string(),
-                );
-                profiler.generate_from_trace(trace_reader);
-                profiler.save_profile();
+                // let mut profiler = GasProfiler::init(
+                //     ProfilerConfig {
+                //         output_dir,
+                //         use_long_function_name,
+                //     },
+                //     path.to_string_lossy().to_string(),
+                // );
+                // profiler.generate_from_trace(trace_reader);
+                // profiler.save_profile();
             }
         }
 
