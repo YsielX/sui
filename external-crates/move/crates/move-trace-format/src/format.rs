@@ -447,7 +447,7 @@ impl<'a> MoveTraceBuilder<'a> {
     pub fn push_event_runtime(&mut self, event: &TraceEvent, stack: Option<&Stack>) {
         self.trace.push_event(event);
         // TODO: Configurable Filters
-        self.tracer.notify(event, Writer(&mut self.trace), stack);
+        self.tracer.notify(event, &mut Writer(&mut self.trace), stack);
     }
 }
 
