@@ -16,6 +16,12 @@ pub trait Tracer {
     fn notify(&mut self, event: &TraceEvent, writer: &mut Writer<'_>, stack: Option<&Stack>);
 }
 
+impl<T: Tracer> Tracer for &mut T {
+    fn notify(&mut self, event: &TraceEvent, writer: &mut Writer<'_>, stack: Option<&Stack>) {
+        <T as Tracer>::notify(self, event, writer, stack)
+    }
+}
+
 pub struct NopTracer;
 impl Tracer for NopTracer {
     fn notify(&mut self, _event: &TraceEvent, _writer: &mut Writer<'_>, _stack: Option<&Stack>) {}
